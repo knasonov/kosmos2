@@ -27,8 +27,10 @@ transcription.
    python main.py
    ```
 
-4. Visit `http://localhost:8000/` in your browser to use a simple upload page.
-   You can also send a POST request with an audio file directly to
+4. Visit `http://localhost:8000/` in your browser to use the upload page.
+   Select an MP3 or M4A file, watch the progress bar as it uploads, and
+   download the resulting transcription when it completes. You can also
+   send a POST request with an audio file directly to
    `http://localhost:8000/transcribe`.
 
 ## Running tests
