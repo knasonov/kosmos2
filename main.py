@@ -7,6 +7,11 @@ import urllib.request
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse
 
+try:
+    import uvicorn
+except ImportError:  # pragma: no cover - uvicorn is only needed to run the server
+    uvicorn = None
+
 app = FastAPI()
 
 
@@ -72,3 +77,14 @@ async def transcribe(file: UploadFile = File(...)):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     return {"text": text}
+
+
+if __name__ == "__main__":  # pragma: no cover - server start
+    if uvicorn is None:
+        raise RuntimeError("uvicorn must be installed to run the server")
+    uvicorn.run(
+        "main:app",
+        host="0.0.0.0",
+        port=int(os.getenv("PORT", "8000")),
+        reload=os.getenv("RELOAD", "0") == "1",
+    )
