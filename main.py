@@ -6,6 +6,7 @@ import urllib.request
 import logging
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
+import re
 from fastapi.responses import HTMLResponse, FileResponse
 
 try:
@@ -36,7 +37,12 @@ async def serve_test_audio():
 OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
 
 
-def call_whisper(file_bytes: bytes, filename: str) -> str:
+def format_sentences(text: str) -> str:
+    """Insert a newline after each sentence."""
+    return re.sub(r"(?<=[.!?]) +", "\n", text.strip())
+
+
+def call_whisper(file_bytes: bytes, filename: str, language: str | None = None) -> str:
     """Send audio to OpenAI Whisper API and return the transcript."""
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
@@ -49,6 +55,8 @@ def call_whisper(file_bytes: bytes, filename: str) -> str:
         "model": "whisper-1",
         "response_format": "json",
     }
+    if language:
+        fields["language"] = language
 
     parts = []
     for name, value in fields.items():
@@ -87,13 +95,14 @@ def call_whisper(file_bytes: bytes, filename: str) -> str:
 
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...)):
+async def transcribe(file: UploadFile = File(...), language: str | None = None):
     """Receive an audio file and return the transcription."""
     data = await file.read()
     await file.close()
     logger.debug("Received %s (%d bytes)", file.filename, len(data))
     try:
-        text = call_whisper(data, file.filename)
+        text = call_whisper(data, file.filename, language)
+        text = format_sentences(text)
     except Exception as exc:
         logger.exception("Transcription failed")
         raise HTTPException(status_code=500, detail=str(exc))

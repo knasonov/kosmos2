@@ -12,7 +12,7 @@ import main
 def test_transcribe(monkeypatch):
     client = TestClient(main.app)
 
-    def fake_call_whisper(data, filename):
+    def fake_call_whisper(data, filename, language=None):
         return "transcribed"
 
     monkeypatch.setattr(main, "call_whisper", fake_call_whisper)
@@ -21,3 +21,21 @@ def test_transcribe(monkeypatch):
     response = client.post("/transcribe", files=files)
     assert response.status_code == 200
     assert response.json() == {"text": "transcribed"}
+
+
+def test_transcribe_language(monkeypatch):
+    client = TestClient(main.app)
+
+    captured = {}
+
+    def fake_call_whisper(data, filename, language=None):
+        captured['lang'] = language
+        return "words"
+
+    monkeypatch.setattr(main, "call_whisper", fake_call_whisper)
+
+    files = {"file": ("test.mp3", io.BytesIO(b"123"), "audio/mpeg")}
+    response = client.post("/transcribe?language=en", files=files)
+    assert response.status_code == 200
+    assert response.json() == {"text": "words"}
+    assert captured['lang'] == 'en'
