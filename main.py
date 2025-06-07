@@ -4,6 +4,9 @@ import uuid
 import mimetypes
 import urllib.request
 import logging
+import math
+
+import db
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 import re
@@ -19,11 +22,16 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
+db.init_db()
+db.populate_defaults()
+
+BYTES_PER_MINUTE = 1024 * 1024  # rough estimate
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Serve a minimal HTML page for uploading audio."""
-    if request.cookies.get("auth") != "1":
+    if request.cookies.get("auth") != "1" or not request.cookies.get("username"):
         return RedirectResponse("/login")
     path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
     with open(path, "r", encoding="utf-8") as fh:
@@ -48,9 +56,11 @@ async def login_page():
 @app.post("/login")
 async def login(username: str = Form(...), password: str = Form(...)):
     """Authenticate the user and redirect to the upload page."""
-    if username == "kosmos" and password == "kosmos":
+    user = db.get_user(username)
+    if user and user["password"] == password:
         response = RedirectResponse("/", status_code=303)
         response.set_cookie("auth", "1", httponly=True)
+        response.set_cookie("username", username, httponly=True)
         return response
     return HTMLResponse("Invalid credentials", status_code=401)
 
@@ -60,6 +70,7 @@ async def logout():
     """Clear the auth cookie and go to login page."""
     response = RedirectResponse("/login", status_code=303)
     response.delete_cookie("auth")
+    response.delete_cookie("username")
     return response
 
 OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
@@ -124,17 +135,35 @@ def call_whisper(file_bytes: bytes, filename: str, language: str | None = None) 
 
 
 @app.post("/transcribe")
-async def transcribe(file: UploadFile = File(...), language: str | None = None):
+async def transcribe(
+    request: Request, file: UploadFile = File(...), language: str | None = None
+):
     """Receive an audio file and return the transcription."""
+    if request.cookies.get("auth") != "1":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = db.get_user(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     data = await file.read()
     await file.close()
     logger.debug("Received %s (%d bytes)", file.filename, len(data))
+
+    minutes = len(data) / BYTES_PER_MINUTE
+    if user["minutes_remaining"] < minutes:
+        raise HTTPException(status_code=400, detail="Recognition limit exceeded")
+
     try:
         text = call_whisper(data, file.filename, language)
         text = format_sentences(text)
     except Exception as exc:
         logger.exception("Transcription failed")
         raise HTTPException(status_code=500, detail=str(exc))
+
+    db.deduct_minutes(username, minutes)
     return {"text": text}
 
 
