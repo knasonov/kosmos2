@@ -7,7 +7,19 @@
     body { font-family: Arial, sans-serif; margin: 40px; background-color: #f5f5f5; }
     .container { max-width: 300px; margin: auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
     h1 { text-align: center; }
-    input { display: block; width: 100%; margin-bottom: 10px; padding: 8px; }
+    input {
+      display: block;
+      width: 100%;
+      margin-bottom: 10px;
+      padding: 8px;
+      box-sizing: border-box; /* ensure inputs fit within the container */
+    }
+    .footer {
+      font-size: small;
+      color: #777;
+      text-align: center;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -19,5 +31,6 @@
       <button type="submit">Log In</button>
     </form>
   </div>
+  <p class="footer">Created by Konstantin Nasonov, please write to @k_nasonov for any questions</p>
 </body>
 </html>
