@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audio Transcription</title>
+</head>
+<body>
+  <h1>Audio Transcription</h1>
+  <input type="file" id="file-input" />
+  <button id="submit">Transcribe</button>
+  <pre id="result"></pre>
+  <script>
+    const btn = document.getElementById('submit');
+    btn.addEventListener('click', async () => {
+      const input = document.getElementById('file-input');
+      if (!input.files.length) {
+        alert('Select a file');
+        return;
+      }
+      const file = input.files[0];
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch('/transcribe', { method: 'POST', body: formData });
+      if (response.ok) {
+        const data = await response.json();
+        document.getElementById('result').textContent = data.text;
+      } else {
+        document.getElementById('result').textContent = 'Error: ' + response.status;
+      }
+    });
+  </script>
+</body>
+</html>

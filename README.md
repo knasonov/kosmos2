@@ -22,7 +22,9 @@ transcription.
    uvicorn main:app --reload
    ```
 
-4. Send a POST request with an audio file to `http://localhost:8000/transcribe`.
+4. Visit `http://localhost:8000/` in your browser to use a simple upload page.
+   You can also send a POST request with an audio file directly to
+   `http://localhost:8000/transcribe`.
 
 ## Running tests
 

@@ -5,8 +5,17 @@ import mimetypes
 import urllib.request
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse
 
 app = FastAPI()
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    """Serve a minimal HTML page for uploading audio."""
+    path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
+    with open(path, "r", encoding="utf-8") as fh:
+        return fh.read()
 
 OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
 
