@@ -56,3 +56,11 @@ def test_transcribe_language(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"text": "words"}
     assert captured['lang'] == 'en'
+
+
+def test_remaining_endpoint():
+    client = client_with_auth()
+    db.set_limit("tester", 5)
+    response = client.get("/remaining")
+    assert response.status_code == 200
+    assert response.json() == {"minutes": 5}

@@ -73,6 +73,20 @@ async def logout():
     response.delete_cookie("username")
     return response
 
+
+@app.get("/remaining")
+async def remaining(request: Request):
+    """Return minutes remaining for the authenticated user."""
+    if request.cookies.get("auth") != "1":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    username = request.cookies.get("username")
+    if not username:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    user = db.get_user(username)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    return {"minutes": user["minutes_remaining"]}
+
 OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
 
 
