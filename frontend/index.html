@@ -33,6 +33,7 @@
       <div class="progress-bar" id="progress-bar"></div>
     </div>
     <div id="estimate"></div>
+    <div id="remaining"></div>
     <pre id="result"></pre>
     <a id="download" href="#">Download Transcription</a>
   </div>
@@ -44,6 +45,17 @@
     const downloadLink = document.getElementById('download');
     const languageSelect = document.getElementById('language');
     const estimateDiv = document.getElementById('estimate');
+    const remainingDiv = document.getElementById('remaining');
+
+    async function updateRemaining() {
+      const resp = await fetch('/remaining');
+      if (resp.ok) {
+        const data = await resp.json();
+        remainingDiv.textContent = 'Minutes remaining: ' + data.minutes.toFixed(2);
+      }
+    }
+
+    updateRemaining();
 
     async function getChunkSize(file) {
       const CHUNK_SECONDS = 600; // 10 minutes
@@ -100,6 +112,7 @@
         resultText += data.text + '\n';
         resultPre.textContent = resultText;
         progressBar.style.width = ((i + 1) / totalChunks * 100) + '%';
+        await updateRemaining();
       }
 
       const blob = new Blob([resultText], {type: 'text/plain'});
