@@ -1,16 +1,34 @@
 import io
 import os
 import sys
+import tempfile
+
 from fastapi.testclient import TestClient
 
-# Ensure the application module can be imported when tests are run directly
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+# Set up temporary database before importing main
+TMPDIR = tempfile.TemporaryDirectory()
+os.environ["DB_PATH"] = os.path.join(TMPDIR.name, "test.db")
+
 import main
+import db
+
+
+def setup_module(module):
+    db.init_db()
+    db.add_user("tester", "pw", 1)  # 1 minute limit
+
+
+def client_with_auth():
+    client = TestClient(main.app)
+    client.cookies.set("auth", "1")
+    client.cookies.set("username", "tester")
+    return client
 
 
 def test_transcribe(monkeypatch):
-    client = TestClient(main.app)
+    client = client_with_auth()
 
     def fake_call_whisper(data, filename, language=None):
         return "transcribed"
@@ -24,8 +42,7 @@ def test_transcribe(monkeypatch):
 
 
 def test_transcribe_language(monkeypatch):
-    client = TestClient(main.app)
-
+    client = client_with_auth()
     captured = {}
 
     def fake_call_whisper(data, filename, language=None):
