@@ -5,9 +5,9 @@ import mimetypes
 import urllib.request
 import logging
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
 import re
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, FileResponse, RedirectResponse
 
 try:
     import uvicorn
@@ -21,8 +21,10 @@ app = FastAPI()
 
 
 @app.get("/", response_class=HTMLResponse)
-async def index():
+async def index(request: Request):
     """Serve a minimal HTML page for uploading audio."""
+    if request.cookies.get("auth") != "1":
+        return RedirectResponse("/login")
     path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
     with open(path, "r", encoding="utf-8") as fh:
         return fh.read()
@@ -33,6 +35,32 @@ async def serve_test_audio():
     """Return the bundled Test10.mp3 file for testing."""
     path = os.path.join(os.path.dirname(__file__), "Test10.mp3")
     return FileResponse(path, media_type="audio/mpeg")
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page():
+    """Serve the login page."""
+    path = os.path.join(os.path.dirname(__file__), "frontend", "login.html")
+    with open(path, "r", encoding="utf-8") as fh:
+        return fh.read()
+
+
+@app.post("/login")
+async def login(username: str = Form(...), password: str = Form(...)):
+    """Authenticate the user and redirect to the upload page."""
+    if username == "kosmos" and password == "kosmos":
+        response = RedirectResponse("/", status_code=303)
+        response.set_cookie("auth", "1", httponly=True)
+        return response
+    return HTMLResponse("Invalid credentials", status_code=401)
+
+
+@app.get("/logout")
+async def logout():
+    """Clear the auth cookie and go to login page."""
+    response = RedirectResponse("/login", status_code=303)
+    response.delete_cookie("auth")
+    return response
 
 OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
 

@@ -27,12 +27,14 @@ transcription.
    python main.py
    ```
 
-4. Visit `http://localhost:8000/` in your browser to use the upload page.
-   Select an MP3 or M4A file. Large uploads are automatically split into
-   ten minute chunks so they can be processed by Whisper. The progress bar
-   updates after each chunk is transcribed and the text appears
-   incrementally. You can also send a POST request with an audio file
-   directly to `http://localhost:8000/transcribe`.
+4. Open `http://localhost:8000/login` in your browser and log in with the
+   username **kosmos** and password **kosmos**. After authenticating you will
+   be redirected to `http://localhost:8000/` where you can upload an MP3 or
+   M4A file. Large uploads are automatically split into ten minute chunks so
+   they can be processed by Whisper. The progress bar updates after each
+   chunk is transcribed and the text appears incrementally. You can also send
+   a POST request with an audio file directly to
+   `http://localhost:8000/transcribe`.
 
 ## Running tests
 
