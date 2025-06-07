@@ -39,6 +39,7 @@ OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
 def call_whisper(file_bytes: bytes, filename: str) -> str:
     """Send audio to OpenAI Whisper API and return the transcript."""
     api_key = os.getenv("OPENAI_API_KEY")
+    print(f"API Key: {api_key}")  # Debugging line to check API key presence
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
