@@ -3,6 +3,7 @@ import json
 import uuid
 import mimetypes
 import urllib.request
+import logging
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
@@ -11,6 +12,9 @@ try:
     import uvicorn
 except ImportError:  # pragma: no cover - uvicorn is only needed to run the server
     uvicorn = None
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 
@@ -37,6 +41,8 @@ def call_whisper(file_bytes: bytes, filename: str) -> str:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
+
+    logger.debug("Calling Whisper with file '%s' (%d bytes)", filename, len(file_bytes))
 
     boundary = uuid.uuid4().hex
     fields = {
@@ -68,9 +74,15 @@ def call_whisper(file_bytes: bytes, filename: str) -> str:
         "Content-Type": f"multipart/form-data; boundary={boundary}",
     }
 
+    logger.debug("Sending request to %s", OPENAI_URL)
     req = urllib.request.Request(OPENAI_URL, data=body, headers=headers)
-    with urllib.request.urlopen(req) as resp:
-        data = json.load(resp)
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.load(resp)
+    except Exception as exc:  # pragma: no cover - network errors hard to trigger in tests
+        logger.exception("Whisper request failed")
+        raise
+    logger.debug("Whisper response: %s", data)
     return data.get("text", "")
 
 
@@ -79,9 +91,11 @@ async def transcribe(file: UploadFile = File(...)):
     """Receive an audio file and return the transcription."""
     data = await file.read()
     await file.close()
+    logger.debug("Received %s (%d bytes)", file.filename, len(data))
     try:
         text = call_whisper(data, file.filename)
     except Exception as exc:
+        logger.exception("Transcription failed")
         raise HTTPException(status_code=500, detail=str(exc))
     return {"text": text}
 

@@ -1,5 +1,11 @@
 import io
+import os
+import sys
 from fastapi.testclient import TestClient
+
+# Ensure the application module can be imported when tests are run directly
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
 import main
 
 
