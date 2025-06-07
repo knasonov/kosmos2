@@ -21,6 +21,11 @@ transcription.
    ```bash
    uvicorn main:app --reload
    ```
+   You can also simply execute the `main.py` file which starts Uvicorn
+   programmatically:
+   ```bash
+   python main.py
+   ```
 
 4. Visit `http://localhost:8000/` in your browser to use a simple upload page.
    You can also send a POST request with an audio file directly to
