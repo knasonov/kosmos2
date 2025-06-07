@@ -6,20 +6,22 @@
 </head>
 <body>
   <h1>Audio Transcription</h1>
-  <input type="file" id="file-input" />
-  <button id="submit">Transcribe</button>
+  <button id="submit">Transcribe Test10.mp3</button>
   <pre id="result"></pre>
   <script>
     const btn = document.getElementById('submit');
     btn.addEventListener('click', async () => {
-      const input = document.getElementById('file-input');
-      if (!input.files.length) {
-        alert('Select a file');
+      // Fetch the local Test10.mp3 file from the backend
+      const audioResp = await fetch('/Test10.mp3');
+      if (!audioResp.ok) {
+        document.getElementById('result').textContent = 'Error fetching audio file';
         return;
       }
-      const file = input.files[0];
+
+      const blob = await audioResp.blob();
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', blob, 'Test10.mp3');
+
       const response = await fetch('/transcribe', { method: 'POST', body: formData });
       if (response.ok) {
         const data = await response.json();

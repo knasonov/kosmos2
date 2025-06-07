@@ -5,7 +5,7 @@ import mimetypes
 import urllib.request
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 
 try:
     import uvicorn
@@ -21,6 +21,13 @@ async def index():
     path = os.path.join(os.path.dirname(__file__), "frontend", "index.html")
     with open(path, "r", encoding="utf-8") as fh:
         return fh.read()
+
+
+@app.get("/Test10.mp3")
+async def serve_test_audio():
+    """Return the bundled Test10.mp3 file for testing."""
+    path = os.path.join(os.path.dirname(__file__), "Test10.mp3")
+    return FileResponse(path, media_type="audio/mpeg")
 
 OPENAI_URL = "https://api.openai.com/v1/audio/transcriptions"
 
