@@ -20,7 +20,7 @@
   <div class="container">
     <h1 id="main-heading">Audio Transcription</h1>
     <form id="uploadForm">
-      <input type="file" id="fileInput" accept="audio/mpeg,audio/mp4" required>
+      <input type="file" id="fileInput" accept="audio/*" required>
       <select id="language">
         <option id="opt-auto" value="">Auto Detect</option>
         <option id="opt-en" value="en">English</option>
@@ -32,6 +32,11 @@
       </select>
       <button id="transcribe-btn" type="submit">Transcribe</button>
     </form>
+    <div id="convert-section" style="display:none;">
+      <div class="progress">
+        <div class="progress-bar" id="convert-progress-bar"></div>
+      </div>
+    </div>
     <div class="progress" id="progress-container">
       <div class="progress-bar" id="progress-bar"></div>
     </div>
@@ -44,6 +49,8 @@
     const form = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const progressBar = document.getElementById('progress-bar');
+    const convertSection = document.getElementById('convert-section');
+    const convertBar = document.getElementById('convert-progress-bar');
     const resultPre = document.getElementById('result');
     const downloadLink = document.getElementById('download');
     const languageSelect = document.getElementById('language');
@@ -65,6 +72,7 @@
         transcribe: 'Transcribe',
         minutes: 'Minutes remaining: ',
         estimate: 'Estimated time: ~',
+        convert: 'Converting: ~',
         seconds: ' seconds',
         error: 'Error: ',
         download: 'Download Transcription'
@@ -82,6 +90,7 @@
         transcribe: 'Распознать',
         minutes: 'Осталось минут: ',
         estimate: 'Оценочное время: ~',
+        convert: 'Конвертация: ~',
         seconds: ' секунд',
         error: 'Ошибка: ',
         download: 'Скачать транскрипт'
@@ -144,6 +153,22 @@
       });
     }
 
+    function fakeProgress(bar, seconds) {
+      bar.style.width = '1%';
+      return new Promise((resolve) => {
+        let elapsed = 0;
+        const int = setInterval(() => {
+          elapsed += 0.5;
+          const pct = Math.min((elapsed / seconds) * 100, 100);
+          bar.style.width = pct + '%';
+          if (elapsed >= seconds) {
+            clearInterval(int);
+            resolve();
+          }
+        }, 500);
+      });
+    }
+
     form.addEventListener('submit', async function(e) {
       e.preventDefault();
       const file = fileInput.files[0];
@@ -153,6 +178,16 @@
       resultPre.textContent = '';
       downloadLink.style.display = 'none';
       estimateDiv.textContent = '';
+
+      const needConvert = file.type !== 'audio/mpeg' && file.type !== 'audio/mp4';
+      if (needConvert) {
+        const convSecs = Math.max(1, Math.ceil(file.size / (1024 * 1024)));
+        estimateDiv.textContent = translations[currentLang].convert + convSecs + translations[currentLang].seconds;
+        convertSection.style.display = 'block';
+        await fakeProgress(convertBar, convSecs);
+        convertSection.style.display = 'none';
+        estimateDiv.textContent = '';
+      }
 
       const chunkSize = await getChunkSize(file);
       const totalChunks = Math.ceil(file.size / chunkSize);
