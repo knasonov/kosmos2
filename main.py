@@ -8,6 +8,9 @@ import math
 import subprocess
 import tempfile
 
+# Ensure .m4a files are recognised with a suitable MIME type
+mimetypes.add_type("audio/m4a", ".m4a")
+
 import db
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Request, Form
