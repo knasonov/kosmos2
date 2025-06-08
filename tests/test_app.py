@@ -110,3 +110,23 @@ def test_sniff_m4a_skips_conversion(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"text": "done"}
     assert 'convert' not in called
+
+
+def test_call_whisper_sets_m4a_mime(monkeypatch):
+    monkeypatch.setenv('OPENAI_API_KEY', 'test')
+    captured = {}
+
+    def fake_urlopen(req):
+        captured['data'] = req.data
+        class Resp(io.BytesIO):
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc, tb):
+                pass
+        return Resp(b'{"text": "hi"}')
+
+    monkeypatch.setattr(main.urllib.request, 'urlopen', fake_urlopen)
+
+    result = main.call_whisper(b'data', 'voice.m4a')
+    assert result == 'hi'
+    assert b'Content-Type: audio/m4a' in captured['data']
