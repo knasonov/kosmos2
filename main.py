@@ -5,6 +5,8 @@ import mimetypes
 import urllib.request
 import logging
 import math
+import subprocess
+import tempfile
 
 import db
 
@@ -26,6 +28,29 @@ db.init_db()
 db.populate_defaults()
 
 BYTES_PER_MINUTE = 1024 * 1024  # rough estimate
+
+
+def convert_to_mp3(data: bytes, ext: str) -> bytes:
+    """Convert audio bytes of given extension to MP3 using ffmpeg."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_path = os.path.join(tmpdir, "input" + ext)
+        output_path = os.path.join(tmpdir, "output.mp3")
+        with open(input_path, "wb") as f:
+            f.write(data)
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            output_path,
+        ]
+        try:
+            subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except Exception as exc:
+            logger.exception("ffmpeg conversion failed")
+            raise RuntimeError("Audio conversion failed") from exc
+        with open(output_path, "rb") as f:
+            return f.read()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -165,6 +190,14 @@ async def transcribe(
     data = await file.read()
     await file.close()
     logger.debug("Received %s (%d bytes)", file.filename, len(data))
+
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in (".mp3", ".m4a"):
+        try:
+            data = convert_to_mp3(data, ext or ".dat")
+            file.filename = os.path.splitext(file.filename or "audio")[0] + ".mp3"
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=str(exc))
 
     minutes = len(data) / BYTES_PER_MINUTE
     if user["minutes_remaining"] < minutes:

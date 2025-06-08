@@ -6,9 +6,9 @@ transcription.
 
 ## Usage
 
-1. Install dependencies:
+1. Install dependencies (and ensure `ffmpeg` is available on your system):
    ```bash
-   pip install fastapi uvicorn
+   pip install fastapi uvicorn ffmpeg-python
    ```
    The `openai` package is not required because the API is called directly.
 
@@ -29,10 +29,12 @@ transcription.
 
 4. Open `http://localhost:8000/login` in your browser and log in with the
    username **kosmos** and password **kosmos**. After authenticating you will
-   be redirected to `http://localhost:8000/` where you can upload an MP3 or
-   M4A file. Large uploads are automatically split into ten minute chunks so
-   they can be processed by Whisper. The progress bar updates after each
-   chunk is transcribed and the text appears incrementally. You can also send
+  be redirected to `http://localhost:8000/` where you can upload an MP3 or
+  M4A file. Other audio types such as OGG will be automatically converted to
+  MP3 on the server before processing. Large uploads are automatically split
+  into ten minute chunks so they can be processed by Whisper. The progress bar
+  updates after each chunk is transcribed and the text appears incrementally.
+  You can also send
    a POST request with an audio file directly to
    `http://localhost:8000/transcribe`.
 

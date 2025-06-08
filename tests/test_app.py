@@ -64,3 +64,25 @@ def test_remaining_endpoint():
     response = client.get("/remaining")
     assert response.status_code == 200
     assert response.json() == {"minutes": 5}
+
+
+def test_transcribe_conversion(monkeypatch):
+    client = client_with_auth()
+    called = {}
+
+    def fake_convert_to_mp3(data, ext):
+        called['convert'] = True
+        return b'mp3data'
+
+    def fake_call_whisper(data, filename, language=None):
+        assert data == b'mp3data'
+        return 'ok'
+
+    monkeypatch.setattr(main, 'convert_to_mp3', fake_convert_to_mp3)
+    monkeypatch.setattr(main, 'call_whisper', fake_call_whisper)
+
+    files = {"file": ("test.ogg", io.BytesIO(b"123"), "audio/ogg")}
+    response = client.post("/transcribe", files=files)
+    assert response.status_code == 200
+    assert response.json() == {"text": "ok"}
+    assert called.get('convert')
