@@ -56,6 +56,38 @@ def convert_to_mp3(data: bytes, ext: str) -> bytes:
             return f.read()
 
 
+def fix_m4a_faststart(data: bytes) -> bytes:
+    """Rewrite an M4A file so the moov atom is at the front."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        input_path = os.path.join(tmpdir, "input.m4a")
+        output_path = os.path.join(tmpdir, "output.m4a")
+        with open(input_path, "wb") as f:
+            f.write(data)
+        cmd = [
+            "ffmpeg",
+            "-y",
+            "-i",
+            input_path,
+            "-c",
+            "copy",
+            "-movflags",
+            "+faststart",
+            output_path,
+        ]
+        try:
+            subprocess.run(
+                cmd,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+        except Exception as exc:
+            logger.exception("ffmpeg faststart failed")
+            raise RuntimeError("Audio fix failed") from exc
+        with open(output_path, "rb") as f:
+            return f.read()
+
+
 def sniff_extension(data: bytes) -> str | None:
     """Guess the audio file extension based on its header."""
     if not data:
@@ -213,6 +245,11 @@ async def transcribe(
     if sniffed in (".mp3", ".m4a"):
         # Use the sniffed extension if it differs from the provided one
         file.filename = os.path.splitext(file.filename or "audio")[0] + sniffed
+        if sniffed == ".m4a":
+            try:
+                data = fix_m4a_faststart(data)
+            except Exception as exc:
+                raise HTTPException(status_code=500, detail=str(exc))
     else:
         try:
             data = convert_to_mp3(data, sniffed or ".dat")
