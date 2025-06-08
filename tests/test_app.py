@@ -100,7 +100,12 @@ def test_sniff_m4a_skips_conversion(monkeypatch):
         called['whisper'] = data
         return 'done'
 
+    def fake_fix(data):
+        called['fix'] = True
+        return data
+
     monkeypatch.setattr(main, 'convert_to_mp3', fake_convert_to_mp3)
+    monkeypatch.setattr(main, 'fix_m4a_faststart', fake_fix)
     monkeypatch.setattr(main, 'call_whisper', fake_call_whisper)
 
     # Minimal m4a/MP4 header: size + 'ftyp' marker
@@ -110,6 +115,31 @@ def test_sniff_m4a_skips_conversion(monkeypatch):
     assert response.status_code == 200
     assert response.json() == {"text": "done"}
     assert 'convert' not in called
+    assert called.get('fix')
+
+
+def test_fix_m4a_called(monkeypatch):
+    client = client_with_auth()
+    called = {}
+
+    def fake_fix(data):
+        called['fix'] = True
+        return b'fixed'
+
+    def fake_call_whisper(data, filename, language=None):
+        called['data'] = data
+        return 'ok'
+
+    monkeypatch.setattr(main, 'fix_m4a_faststart', fake_fix)
+    monkeypatch.setattr(main, 'call_whisper', fake_call_whisper)
+
+    m4a_data = b"\x00\x00\x00\x18ftypm4a " + b'123'
+    files = {"file": ("voice.m4a", io.BytesIO(m4a_data), "audio/mp4")}
+    response = client.post("/transcribe", files=files)
+    assert response.status_code == 200
+    assert response.json() == {"text": "ok"}
+    assert called.get('fix')
+    assert called['data'] == b'fixed'
 
 
 def test_call_whisper_sets_m4a_mime(monkeypatch):
