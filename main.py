@@ -53,6 +53,19 @@ def convert_to_mp3(data: bytes, ext: str) -> bytes:
             return f.read()
 
 
+def sniff_extension(data: bytes) -> str | None:
+    """Guess the audio file extension based on its header."""
+    if not data:
+        return None
+    if data[:3] == b"ID3" or (len(data) > 1 and data[0] == 0xFF and (data[1] & 0xE0) == 0xE0):
+        return ".mp3"
+    if len(data) > 12 and data[4:8] == b"ftyp":
+        return ".m4a"
+    if data.startswith(b"OggS"):
+        return ".ogg"
+    return None
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
     """Serve a minimal HTML page for uploading audio."""
@@ -192,9 +205,14 @@ async def transcribe(
     logger.debug("Received %s (%d bytes)", file.filename, len(data))
 
     ext = os.path.splitext(file.filename or "")[1].lower()
-    if ext not in (".mp3", ".m4a"):
+    sniffed = sniff_extension(data) or ext
+
+    if sniffed in (".mp3", ".m4a"):
+        # Use the sniffed extension if it differs from the provided one
+        file.filename = os.path.splitext(file.filename or "audio")[0] + sniffed
+    else:
         try:
-            data = convert_to_mp3(data, ext or ".dat")
+            data = convert_to_mp3(data, sniffed or ".dat")
             file.filename = os.path.splitext(file.filename or "audio")[0] + ".mp3"
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
