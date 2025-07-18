@@ -278,15 +278,7 @@ async def transcribe(
     sniffed_ext = sniff_extension(data)
     sniffed = sniffed_ext or ext
 
-    if sniffed_ext is None and ext in (".m4a", ".mp4"):
-        # Chunk of an MP4/M4A file - convert to MP3 because the container is invalid
-        try:
-            data = convert_to_mp3(data, ext)
-            file.filename = os.path.splitext(file.filename or "audio")[0] + ".mp3"
-            sniffed = ".mp3"
-        except Exception as exc:
-            raise HTTPException(status_code=500, detail=str(exc))
-    elif sniffed in (".mp3", ".m4a"):
+    if sniffed in (".mp3", ".m4a"):
         # Use the sniffed extension if it differs from the provided one
         file.filename = os.path.splitext(file.filename or "audio")[0] + sniffed
         if sniffed == ".m4a":
