@@ -9,6 +9,7 @@ import logging
 import math
 import subprocess
 import tempfile
+import shutil
 
 # Ensure .m4a files are recognised with a suitable MIME type
 mimetypes.add_type("audio/m4a", ".m4a")
@@ -59,7 +60,16 @@ def convert_to_mp3(data: bytes, ext: str) -> bytes:
 
 
 def fix_m4a_faststart(data: bytes) -> bytes:
-    """Rewrite an M4A file so the moov atom is at the front."""
+    """Rewrite an M4A file so the moov atom is at the front.
+
+    If ``ffmpeg`` is not available or fails this function returns the original
+    bytes instead of raising an exception. This avoids 500 errors when the
+    server does not have ``ffmpeg`` installed.
+    """
+    if shutil.which("ffmpeg") is None:
+        logger.warning("ffmpeg not found; skipping faststart fix")
+        return data
+
     with tempfile.TemporaryDirectory() as tmpdir:
         input_path = os.path.join(tmpdir, "input.m4a")
         output_path = os.path.join(tmpdir, "output.m4a")
@@ -83,9 +93,11 @@ def fix_m4a_faststart(data: bytes) -> bytes:
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
-        except Exception as exc:
-            logger.exception("ffmpeg faststart failed")
-            raise RuntimeError("Audio fix failed") from exc
+        except Exception:
+            # Log the error but fall back to the original data so that
+            # transcription can still proceed.
+            logger.exception("ffmpeg faststart failed; returning original data")
+            return data
         with open(output_path, "rb") as f:
             return f.read()
 
