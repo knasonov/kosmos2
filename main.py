@@ -3,6 +3,7 @@ import json
 import uuid
 import mimetypes
 import urllib.request
+import urllib.error
 import logging
 import math
 import subprocess
@@ -214,6 +215,18 @@ def call_whisper(file_bytes: bytes, filename: str, language: str | None = None) 
     try:
         with urllib.request.urlopen(req) as resp:
             data = json.load(resp)
+    except urllib.error.HTTPError as exc:  # pragma: no cover - network errors hard to trigger in tests
+        try:
+            body = exc.read().decode()
+            try:
+                body_json = json.loads(body)
+                body = body_json.get("error", {}).get("message", body)
+            except Exception:
+                pass
+        except Exception:
+            body = exc.reason
+        logger.exception("Whisper HTTP error %s: %s", exc.code, body)
+        raise RuntimeError(f"Whisper API error {exc.code}: {body}") from exc
     except Exception as exc:  # pragma: no cover - network errors hard to trigger in tests
         logger.exception("Whisper request failed")
         raise
