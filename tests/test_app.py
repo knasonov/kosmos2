@@ -183,3 +183,35 @@ def test_call_whisper_timeout_env(monkeypatch):
     result = main.call_whisper(b'data', 'voice.mp3')
     assert result == 'ok'
     assert captured['timeout'] == 123
+
+
+def test_m4a_chunk_conversion(monkeypatch):
+    client = client_with_auth()
+    called = {}
+
+    def fake_convert_to_mp3(data, ext):
+        called['convert'] = ext
+        return b'mp3data'
+
+    def fake_call_whisper(data, filename, language=None):
+        called['data'] = data
+        called['filename'] = filename
+        return 'ok'
+
+    def fake_fix(data):
+        called['fix'] = True
+        return data
+
+    monkeypatch.setattr(main, 'convert_to_mp3', fake_convert_to_mp3)
+    monkeypatch.setattr(main, 'call_whisper', fake_call_whisper)
+    monkeypatch.setattr(main, 'fix_m4a_faststart', fake_fix)
+
+    # Chunk from the middle of an M4A file - no header to sniff
+    files = {"file": ("chunk.m4a", io.BytesIO(b'noheader'), "audio/mp4")}
+    response = client.post('/transcribe', files=files)
+
+    assert response.status_code == 200
+    assert called.get('convert') == '.m4a'
+    assert called['data'] == b'mp3data'
+    assert called['filename'].endswith('.mp3')
+    assert 'fix' not in called
