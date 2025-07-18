@@ -146,8 +146,9 @@ def test_call_whisper_sets_m4a_mime(monkeypatch):
     monkeypatch.setenv('OPENAI_API_KEY', 'test')
     captured = {}
 
-    def fake_urlopen(req):
+    def fake_urlopen(req, timeout=None):
         captured['data'] = req.data
+        captured['timeout'] = timeout
         class Resp(io.BytesIO):
             def __enter__(self):
                 return self
@@ -160,3 +161,25 @@ def test_call_whisper_sets_m4a_mime(monkeypatch):
     result = main.call_whisper(b'data', 'voice.m4a')
     assert result == 'hi'
     assert b'Content-Type: audio/m4a' in captured['data']
+    assert captured['timeout'] == 300
+
+
+def test_call_whisper_timeout_env(monkeypatch):
+    monkeypatch.setenv('OPENAI_API_KEY', 'test')
+    monkeypatch.setenv('OPENAI_TIMEOUT', '123')
+    captured = {}
+
+    def fake_urlopen(req, timeout=None):
+        captured['timeout'] = timeout
+        class Resp(io.BytesIO):
+            def __enter__(self):
+                return self
+            def __exit__(self, exc_type, exc, tb):
+                pass
+        return Resp(b'{"text": "ok"}')
+
+    monkeypatch.setattr(main.urllib.request, 'urlopen', fake_urlopen)
+
+    result = main.call_whisper(b'data', 'voice.mp3')
+    assert result == 'ok'
+    assert captured['timeout'] == 123
