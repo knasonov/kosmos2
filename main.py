@@ -4,6 +4,7 @@ import uuid
 import mimetypes
 import urllib.request
 import urllib.error
+import socket
 import logging
 import math
 import subprocess
@@ -172,11 +173,17 @@ def format_sentences(text: str) -> str:
 def call_whisper(file_bytes: bytes, filename: str, language: str | None = None) -> str:
     """Send audio to OpenAI Whisper API and return the transcript."""
     api_key = os.getenv("OPENAI_API_KEY")
-    print(f"API Key: {api_key}")  # Debugging line to check API key presence
     if not api_key:
         raise RuntimeError("OPENAI_API_KEY not set")
 
-    logger.debug("Calling Whisper with file '%s' (%d bytes)", filename, len(file_bytes))
+    timeout = int(os.getenv("OPENAI_TIMEOUT", "300"))
+
+    logger.debug(
+        "Calling Whisper with file '%s' (%d bytes) (timeout=%d)",
+        filename,
+        len(file_bytes),
+        timeout,
+    )
 
     boundary = uuid.uuid4().hex
     fields = {
@@ -213,7 +220,7 @@ def call_whisper(file_bytes: bytes, filename: str, language: str | None = None) 
     logger.debug("Sending request to %s", OPENAI_URL)
     req = urllib.request.Request(OPENAI_URL, data=body, headers=headers)
     try:
-        with urllib.request.urlopen(req) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             data = json.load(resp)
     except urllib.error.HTTPError as exc:  # pragma: no cover - network errors hard to trigger in tests
         try:
@@ -227,6 +234,9 @@ def call_whisper(file_bytes: bytes, filename: str, language: str | None = None) 
             body = exc.reason
         logger.exception("Whisper HTTP error %s: %s", exc.code, body)
         raise RuntimeError(f"Whisper API error {exc.code}: {body}") from exc
+    except socket.timeout as exc:  # pragma: no cover - network errors hard to trigger in tests
+        logger.exception("Whisper request timed out")
+        raise RuntimeError(f"Whisper API timed out after {timeout} seconds") from exc
     except Exception as exc:  # pragma: no cover - network errors hard to trigger in tests
         logger.exception("Whisper request failed")
         raise
