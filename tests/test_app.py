@@ -200,7 +200,7 @@ def test_m4a_chunk_conversion(monkeypatch):
 
     def fake_fix(data):
         called['fix'] = True
-        return data
+        return b'fixed'
 
     monkeypatch.setattr(main, 'convert_to_mp3', fake_convert_to_mp3)
     monkeypatch.setattr(main, 'call_whisper', fake_call_whisper)
@@ -211,7 +211,7 @@ def test_m4a_chunk_conversion(monkeypatch):
     response = client.post('/transcribe', files=files)
 
     assert response.status_code == 200
-    assert called.get('convert') == '.m4a'
-    assert called['data'] == b'mp3data'
-    assert called['filename'].endswith('.mp3')
-    assert 'fix' not in called
+    assert 'convert' not in called
+    assert called.get('fix')
+    assert called['data'] == b'fixed'
+    assert called['filename'].endswith('.m4a')
